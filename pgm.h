@@ -5,18 +5,32 @@
 #ifndef IMAGE_CORRECTION_PGM_H
 #define IMAGE_CORRECTION_PGM_H
 #define MAX 300
+#define MAX_KERNEL 5
+#define CUSTOM 0
+#define SHARPEN 1
+#define EDGE 2
+#define BOX_BLUR 3
 
 typedef struct {
-    int maxVal;
-    int width;
-    int height;
+    unsigned int maxVal;
+    unsigned int width;
+    unsigned int height;
     int data[MAX][MAX];
 } PGMimg;
 
-// Prototypes
+typedef struct {
+    size_t size;
+    float data[MAX_KERNEL][MAX_KERNEL];
+} Kernel;
 
-PGMimg getPGMImage(const char *filename, PGMimg *image);
+// Prototypes =====================================
 
-int savePGMImage(const char* filename,PGMimg *img);
+void getPGMImage(const char *, PGMimg *);
+
+void savePGMImage(const char *, const PGMimg *);
+
+void processImage(const PGMimg *image, int mode);
+
+void fillCustomKernel(Kernel *k);
 
 #endif //IMAGE_CORRECTION_PGM_H

@@ -8,12 +8,12 @@
 #include "pgm.h"
 
 /**
- *
+ * Read image from file and store it in second parameter
  * @param filename relative path of the image file to read
  * @param image PGM struct variable where to store the read image
  * @return
  */
-PGMimg getPGMImage(const char *filename, PGMimg *image) {
+void getPGMImage(const char *filename, PGMimg *image) {
 
     FILE *in_file;
     char ch;                    // reading a single character
@@ -83,8 +83,6 @@ PGMimg getPGMImage(const char *filename, PGMimg *image) {
     {
         printf("Done reading file.\n\n");
     }
-
-    return *image;
 }
 
 /**
@@ -93,7 +91,7 @@ PGMimg getPGMImage(const char *filename, PGMimg *image) {
  * @param img PGM Image to save
  * @return
  */
-int savePGMImage(const char *filename, PGMimg *image) {
+void savePGMImage(const char *filename, const PGMimg *image) {
     FILE *out_file;
     int width, height, data;
     char *filepath = malloc(sizeof(char) * 50);
@@ -122,7 +120,118 @@ int savePGMImage(const char *filename, PGMimg *image) {
         fprintf(out_file, "\n");
     }
 
-    printf("Saving image Done ! check it in the images folder!");
-
-    return 1;
+    printf("Saving image Done ! check it in the images folder!\n\n");
 };
+
+/**
+ * Process convolution for input image using a kernel
+ * @param image input image to calculate the convolution for
+ * @param mode Filter mode, 0 for user custom
+ */
+void processImage(const PGMimg *image, const int mode) {
+
+    char *filename = malloc(50 * sizeof(char));
+    PGMimg *out_image = malloc(sizeof(PGMimg));
+    Kernel *kernel = malloc(sizeof(Kernel));
+
+    // checking process mode =====================================
+    switch (mode) {
+        case SHARPEN: { // sharpen filter
+            printf("\nSharpening image ............................\n");
+            // Assigning kernel values
+            kernel->size = 3;
+            kernel->data[0][0] = 0;
+            kernel->data[0][1] = -1;
+            kernel->data[0][2] = 0;
+            kernel->data[1][0] = -1;
+            kernel->data[1][1] = 5;
+            kernel->data[1][2] = -1;
+            kernel->data[2][0] = 0;
+            kernel->data[2][1] = -1;
+            kernel->data[2][2] = 0;
+            break;
+        }
+        case EDGE: {
+            printf("\nEdge detection ............................\n");
+            // Assigning kernel values
+            kernel->size = 3;
+            kernel->data[0][0] = -1;
+            kernel->data[0][1] = -1;
+            kernel->data[0][2] = -1;
+            kernel->data[1][0] = -1;
+            kernel->data[1][1] = 8;
+            kernel->data[1][2] = -1;
+            kernel->data[2][0] = -1;
+            kernel->data[2][1] = -1;
+            kernel->data[2][2] = -1;
+            break;
+        }
+        case BOX_BLUR: {
+            printf("\nBox Blur ............................\n");
+            // Assigning kernel values
+            kernel->size = 3;
+            for (int i = 0; i < kernel->size; i++) {
+                for (int j = 0; j < kernel->size; j++) {
+                    kernel->data[i][j] = 1 / 9;
+                }
+            }
+            break;
+        }
+        default: { // user custom filter
+            fillCustomKernel(kernel);
+        }
+    }
+
+    // fixing output image size =====================================
+    out_image->width = image->width - kernel->size + 1;
+    out_image->height = image->height - kernel->size + 1;
+    out_image->maxVal = image->maxVal;
+
+    // Calculating convolution =====================================
+    for (int out_row = 0; out_row < out_image->height; out_row++) {
+        for (int out_col = 0; out_col < out_image->width; out_col++) {
+            out_image->data[out_row][out_col] = 0;
+            for (int i = 0; i < kernel->size; i++) {
+                for (int j = 0; j < kernel->size; j++) {
+                    out_image->data[out_row][out_col] +=
+                            (int) (kernel->data[i][j] * (float) image->data[i + out_row][j + out_col]);
+                }
+            }
+            // fixing values out of range
+            if (out_image->data[out_row][out_col] > 255)
+                out_image->data[out_row][out_col] = 255;
+            else if (out_image->data[out_row][out_col] < 0)
+                out_image->data[out_row][out_col] = 0;
+        }
+    }
+
+    // Saving image =====================================
+    setbuf(stdout, 0);                  // free buffer
+    printf("Output file name : ");
+    gets(filename);
+    savePGMImage(filename, out_image);
+
+}
+
+/**
+ * Creating a user defined kernel
+ * @param k input kernel to fill
+ */
+void fillCustomKernel(Kernel *k) {
+
+    size_t size = 0;
+    do {
+        printf("You can check custom kernels at : http://setosa.io/ev/image-kernels\n");
+        printf("\nEnter kernel size (max = 5) : ");
+        scanf("%d", &size);
+    } while (size > MAX_KERNEL);
+    k->size = size;
+    printf("\n");
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            printf("K(%d,%d) = ", i, j);
+            scanf("%f", &(k->data[i][j]));
+        }
+    }
+
+}
